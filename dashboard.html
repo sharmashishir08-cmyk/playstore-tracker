@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Play Store Rankings Tracker</title>
+<style>
+:root {
+  --bg: #0f1117;
+  --surface: #16181f;
+  --surface2: #1e2130;
+  --border: rgba(255,255,255,0.07);
+  --border2: rgba(255,255,255,0.12);
+  --text: #e2e8f0;
+  --muted: #64748b;
+  --hint: #3d4557;
+  --accent: #6c63ff;
+  --amber: #f59e0b;
+  --amber-bg: rgba(245,158,11,0.1);
+  --amber-border: rgba(245,158,11,0.25);
+  --green: #22c55e;
+  --green-bg: rgba(34,197,94,0.1);
+  --green-border: rgba(34,197,94,0.25);
+  --blue: #38bdf8;
+  --blue-bg: rgba(56,189,248,0.1);
+  --blue-border: rgba(56,189,248,0.25);
+  --purple-bg: rgba(108,99,255,0.1);
+  --purple-border: rgba(108,99,255,0.25);
+  --radius: 10px;
+  --radius-sm: 6px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.layout { display: grid; grid-template-columns: 220px 1fr; min-height: 100vh; }
+.sidebar {
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  padding: 20px 0;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+.main { padding: 28px 32px; max-width: 1100px; overflow: auto; }
+.sidebar-logo { padding: 0 18px 20px; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
+.sidebar-logo .wordmark { font-size: 14px; font-weight: 700; color: var(--text); }
+.sidebar-logo .sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.sidebar-section { padding: 0 12px; margin-bottom: 8px; }
+.sidebar-label { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--hint); padding: 0 6px; margin-bottom: 4px; font-weight: 600; }
+.nav-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 10px; border-radius: var(--radius-sm);
+  cursor: pointer; font-size: 12px; color: var(--muted);
+  transition: all 0.12s; border: 1px solid transparent;
+  white-space: nowrap;
+}
+.nav-item:hover { background: var(--surface2); color: var(--text); }
+.nav-item.active { background: var(--surface2); color: var(--text); border-color: var(--border2); }
+.nav-item .count {
+  margin-left: auto; font-size: 10px; padding: 1px 6px;
+  border-radius: 10px; background: var(--surface2);
+  color: var(--muted); border: 1px solid var(--border);
+}
+.nav-item.active .count { background: var(--accent); color: white; border-color: transparent; }
+.sidebar-footer { margin-top: auto; padding: 16px 18px 0; border-top: 1px solid var(--border); }
+.sidebar-footer .date { font-size: 11px; color: var(--muted); }
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 24px; }
+.stat { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px; }
+.stat-label { font-size: 11px; text-transform: uppercase; letter-spacing: .7px; color: var(--muted); margin-bottom: 8px; }
+.stat-value { font-size: 32px; font-weight: 700; line-height: 1; }
+.stat-value.amber { color: var(--amber); }
+.stat-value.green { color: var(--green); }
+.stat-value.blue  { color: var(--blue); }
+.stat-sub { font-size: 11px; color: var(--muted); margin-top: 4px; }
+.legend { display: flex; gap: 14px; align-items: center; margin-bottom: 14px; flex-wrap: wrap; }
+.legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--muted); }
+.legend-dot { width: 7px; height: 7px; border-radius: 50%; }
+.section-title { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+.section-title .ct { font-size: 11px; color: var(--muted); font-weight: 400; }
+.cards { display: flex; flex-direction: column; gap: 10px; }
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  display: grid;
+  grid-template-columns: 56px 1fr auto;
+  gap: 0 14px;
+  align-items: start;
+  transition: border-color 0.12s;
+}
+.card:hover { border-color: var(--border2); }
+.card.breakout   { border-left: 2px solid var(--amber); }
+.card.climber    { border-left: 2px solid var(--green); }
+.card.new_entrant{ border-left: 2px solid var(--blue); }
+.rank-col { display: flex; flex-direction: column; align-items: center; gap: 5px; padding-top: 2px; }
+.rank-num { font-size: 22px; font-weight: 700; line-height: 1; color: var(--muted); }
+.rank-num.r-top10 { color: var(--amber); }
+.rank-num.r-top25 { color: var(--blue); }
+.rank-delta { font-size: 10px; font-weight: 600; padding: 2px 6px; border-radius: 8px; white-space: nowrap; }
+.rank-delta.new { background: var(--blue-bg); color: var(--blue); border: 1px solid var(--blue-border); }
+.rank-delta.up  { background: var(--green-bg); color: var(--green); border: 1px solid var(--green-border); }
+.body-col { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.app-header { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+.app-name { font-size: 14px; font-weight: 600; color: var(--text); text-decoration: none; }
+.app-name:hover { color: var(--accent); }
+.badge { font-size: 10px; padding: 2px 7px; border-radius: 8px; font-weight: 600; text-transform: uppercase; letter-spacing: .4px; }
+.badge.breakout   { background: var(--amber-bg); color: var(--amber); border: 1px solid var(--amber-border); }
+.badge.climber    { background: var(--green-bg); color: var(--green); border: 1px solid var(--green-border); }
+.badge.new_entrant{ background: var(--blue-bg);  color: var(--blue);  border: 1px solid var(--blue-border); }
+.developer { font-size: 11px; color: var(--muted); }
+.one-liner { font-size: 12px; color: var(--text); opacity: .85; line-height: 1.5; margin-top: 1px; }
+.one-liner.empty { color: var(--muted); font-style: italic; }
+.meta-row { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; margin-top: 5px; }
+.chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 11px; padding: 3px 8px; border-radius: 6px;
+  border: 1px solid var(--border2); color: var(--muted);
+  background: var(--surface2); white-space: nowrap;
+}
+.chip .dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.dot-series { background: #6c63ff; }
+.dot-seed   { background: var(--green); }
+.dot-pre    { background: var(--blue); }
+.dot-public { background: var(--amber); }
+.dot-acq    { background: #f472b6; }
+.dot-boot   { background: var(--muted); }
+.dot-unk    { background: var(--hint); }
+.chip.funding { color: var(--text); }
+.chip.cat { background: var(--purple-bg); border-color: var(--purple-border); color: #a5b4fc; }
+.chip.conf-low { opacity: .6; }
+.investors-row { font-size: 11px; color: var(--muted); margin-top: 3px; }
+.investors-row span { color: var(--text); opacity: .7; }
+.right-col { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; padding-top: 2px; min-width: 80px; }
+.score  { font-size: 12px; color: var(--amber); font-weight: 600; }
+.installs { font-size: 11px; color: var(--muted); }
+.conf-badge { font-size: 10px; padding: 2px 6px; border-radius: 6px; border: 1px solid var(--border); }
+.conf-badge.high   { color: var(--green); border-color: var(--green-border); background: var(--green-bg); }
+.conf-badge.medium { color: var(--amber); border-color: var(--amber-border); background: var(--amber-bg); }
+.conf-badge.low    { color: var(--muted); border-color: var(--border); background: transparent; }
+.last-round { font-size: 10px; color: var(--muted); text-align: right; margin-top: 2px; max-width: 90px; line-height: 1.4; }
+.table-wrap { border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+table { width: 100%; border-collapse: collapse; }
+thead th { background: var(--surface); padding: 9px 14px; text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: .8px; color: var(--muted); font-weight: 600; white-space: nowrap; }
+tbody tr { border-top: 1px solid var(--border); }
+tbody tr:hover { background: var(--surface); }
+tbody td { padding: 9px 14px; font-size: 12px; }
+.trank { font-weight: 700; color: var(--muted); }
+.trank.t10 { color: var(--amber); }
+.trank.t25 { color: var(--blue); }
+.ta { color: var(--text); text-decoration: none; font-weight: 500; }
+.ta:hover { color: var(--accent); }
+.td  { color: var(--muted); font-size: 11px; }
+.tab-btn { padding: 6px 14px; border-radius: var(--radius-sm); font-size: 12px; cursor: pointer; color: var(--muted); border: 1px solid transparent; background: transparent; transition: all .12s; }
+.tab-btn:hover { color: var(--text); background: var(--surface); }
+.tab-btn.active { background: var(--surface2); color: var(--text); border-color: var(--border2); }
+.cat-select { background: var(--surface2); border: 1px solid var(--border2); color: var(--text); padding: 5px 10px; border-radius: 6px; font-size: 12px; outline: none; }
+.empty { text-align: center; padding: 60px 20px; color: var(--muted); }
+.empty .icon { font-size: 36px; margin-bottom: 12px; }
+#loading-screen { display: flex; align-items: center; justify-content: center; height: 100vh; grid-column: 1/-1; }
+.spinner { display: inline-block; width: 28px; height: 28px; border: 2px solid var(--border2); border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+<div class="layout" id="root">
+  <div id="loading-screen">
+    <div style="text-align:center">
+      <div class="spinner"></div>
+      <div style="margin-top:14px;color:var(--muted)">Loading dashboard…</div>
+    </div>
+  </div>
+</div>
+
+<script>
+var D = null;
+var state = { view:"movers", moverType:"all", catFilter:"all", rankingCat:null, band:"25-75" };
+
+async function boot() {
+  try {
+    var res = await fetch("dashboard_data.json");
+    if (!res.ok) throw new Error();
+    D = await res.json();
+    state.rankingCat = Object.keys(D.categories)[0];
+    render();
+  } catch(e) {
+    document.getElementById("root").innerHTML = '<div id="loading-screen"><div class="empty"><div class="icon">📭</div><div style="font-size:14px;color:var(--text);margin-bottom:8px">No data yet</div><div>Run <code style="background:var(--surface2);padding:2px 6px;border-radius:4px">python main.py</code> to generate dashboard_data.json</div></div></div>';
+  }
+}
+
+function esc(s) { return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+function firstSent(t) { var m=(t||"").match(/^[^.!?]+[.!?]/); return m?m[0].trim():(t||"").slice(0,120); }
+
+function dotClass(stage) {
+  var m = {"series_a":"dot-series","series_b":"dot-series","series_c":"dot-series","series_d_plus":"dot-series",
+    "seed":"dot-seed","pre-seed":"dot-pre","public":"dot-public","acquired":"dot-acq","bootstrapped":"dot-boot"};
+  return m[stage]||"dot-unk";
+}
+function stageLabel(stage) {
+  var m = {"series_a":"Series A","series_b":"Series B","series_c":"Series C","series_d_plus":"Series D+",
+    "seed":"Seed","pre-seed":"Pre-seed","public":"Public","acquired":"Acquired","bootstrapped":"Bootstrapped","unknown":"—"};
+  return m[stage]||stage||"—";
+}
+
+function fundingChip(m) {
+  var stage = m.funding_stage||"unknown";
+  var total = m.funding_total_usd||"unknown";
+  var conf  = m.confidence||"low";
+  var totalStr = total!=="unknown"?" · "+esc(total):"";
+  var confCls  = conf==="low"?"conf-low":"";
+  return '<span class="chip funding '+confCls+'"><span class="dot '+dotClass(stage)+'"></span>'+stageLabel(stage)+totalStr+'</span>';
+}
+
+function renderCard(m) {
+  var rc = m.curr_rank<=9?"r-top10":m.curr_rank<=24?"r-top25":"";
+  var delta = m.prev_rank
+    ? '<div class="rank-delta up">▲'+(m.prev_rank-m.curr_rank)+'</div>'
+    : '<div class="rank-delta new">NEW</div>';
+  var ol = m.one_liner
+    ? '<div class="one-liner">'+esc(m.one_liner)+'</div>'
+    : (m.play_description
+        ? '<div class="one-liner">'+esc(firstSent(m.play_description))+'</div>'
+        : '<div class="one-liner empty">No description available</div>');
+  var catLabel = (m.category||"").replace("_AND_"," & ").replace(/_/g," ");
+  var conf = m.confidence||"low";
+  var confTxt = {high:"✓ high",medium:"~ med",low:"? low"}[conf]||"? low";
+  var investors = (m.investors&&m.investors!=="unknown")
+    ? '<div class="investors-row">Investors: <span>'+esc(m.investors)+'</span></div>' : "";
+  var lastRound = (m.last_round&&m.last_round!=="unknown")
+    ? '<div class="last-round">'+esc(m.last_round)+'</div>' : "";
+  var prevChip = m.prev_rank ? '<span class="chip">was #'+m.prev_rank+'</span>' : "";
+
+  return '<div class="card '+m.type+'">'
+    +'<div class="rank-col"><div class="rank-num '+rc+'">#'+m.curr_rank+'</div>'+delta+'</div>'
+    +'<div class="body-col">'
+      +'<div class="app-header"><a class="app-name" href="'+esc(m.url||"#")+'" target="_blank">'+esc(m.title)+'</a>'
+        +'<span class="badge '+m.type+'">'+m.type.replace("_"," ")+'</span></div>'
+      +'<div class="developer">'+esc(m.developer||"")+'</div>'
+      +ol
+      +'<div class="meta-row">'+fundingChip(m)+'<span class="chip cat">'+catLabel+'</span>'+prevChip+'</div>'
+      +investors
+    +'</div>'
+    +'<div class="right-col">'
+      +(m.score?'<div class="score">★ '+Number(m.score).toFixed(1)+'</div>':"")
+      +(m.installs?'<div class="installs">'+esc(m.installs)+'</div>':"")
+      +'<div class="conf-badge '+conf+'">'+confTxt+'</div>'
+      +lastRound
+    +'</div>'
+    +'</div>';
+}
+
+function render() {
+  var cats = Object.keys(D.categories);
+  var allMovers = D.movers||[];
+  var counts = {
+    all: allMovers.length,
+    breakout:    allMovers.filter(function(m){return m.type==="breakout";}).length,
+    climber:     allMovers.filter(function(m){return m.type==="climber";}).length,
+    new_entrant: allMovers.filter(function(m){return m.type==="new_entrant";}).length
+  };
+  var catCounts = {};
+  cats.forEach(function(c){ catCounts[c]=allMovers.filter(function(m){return m.category===c;}).length; });
+
+  var navItems = [
+    ['movers','📈 Movers',counts.all],
+    ['rankings','🏆 Rankings',null]
+  ].map(function(x){
+    return '<div class="nav-item'+(state.view===x[0]?" active":"")
+      +'" onclick="setView(\''+x[0]+'\')">'
+      +x[1]+(x[2]!=null?'<span class="count">'+x[2]+'</span>':"")
+      +'</div>';
+  }).join("");
+
+  var typeItems = [["all","All",counts.all],["breakout","Breakouts",counts.breakout],
+    ["climber","Climbers",counts.climber],["new_entrant","New Entrants",counts.new_entrant]]
+    .map(function(x){
+      return '<div class="nav-item'+(state.moverType===x[0]&&state.view==="movers"?" active":"")
+        +'" onclick="setMoverType(\''+x[0]+'\')">'
+        +x[1]+'<span class="count">'+x[2]+'</span></div>';
+    }).join("");
+
+  var catItems = '<div class="nav-item'+(state.catFilter==="all"?" active":"")
+    +'" onclick="setCat(\'all\')">All categories<span class="count">'+counts.all+'</span></div>'
+    + cats.map(function(c){
+      return '<div class="nav-item'+(state.catFilter===c?" active":"")
+        +'" onclick="setCat(\''+c+'\')">'
+        +c.replace("_AND_"," & ").replace(/_/g," ")
+        +'<span class="count">'+(catCounts[c]||0)+'</span></div>';
+    }).join("");
+
+  var mainContent;
+  if (state.view==="movers") {
+    var movers = allMovers.slice();
+    if (state.moverType!=="all") movers=movers.filter(function(m){return m.type===state.moverType;});
+    if (state.catFilter!=="all") movers=movers.filter(function(m){return m.category===state.catFilter;});
+    var s = D.summary||{};
+    mainContent = '<div class="stats">'
+      +'<div class="stat"><div class="stat-label">🔥 Breakouts → top 10</div><div class="stat-value amber">'+(s.breakouts||0)+'</div><div class="stat-sub">New top-10 entrants</div></div>'
+      +'<div class="stat"><div class="stat-label">📈 Climbers → top 25</div><div class="stat-value green">'+(s.climbers||0)+'</div><div class="stat-sub">From rank 25–75 band</div></div>'
+      +'<div class="stat"><div class="stat-label">✨ New entrants</div><div class="stat-value blue">'+(s.new_entrants||0)+'</div><div class="stat-sub">First time in rank 25–75</div></div>'
+      +'</div>'
+      +'<div class="legend">'
+        +'<div class="legend-item"><div class="legend-dot" style="background:var(--green)"></div>High confidence (Claude)</div>'
+        +'<div class="legend-item"><div class="legend-dot" style="background:var(--amber)"></div>Medium confidence</div>'
+        +'<div class="legend-item"><div class="legend-dot" style="background:var(--hint)"></div>Low / unknown</div>'
+      +'</div>'
+      +'<div class="section-title">Mover events<span class="ct">'+movers.length+' results</span></div>'
+      +'<div class="cards">'
+        +(movers.length ? movers.map(renderCard).join("") : '<div class="empty"><div class="icon">🎉</div><div>No movers match this filter.</div></div>')
+      +'</div>';
+  } else {
+    var cat = state.rankingCat||cats[0];
+    var apps = (D.categories[cat]||[]).slice();
+    if (state.band==="1-24")   apps=apps.filter(function(a){return a.rank<=24;});
+    if (state.band==="25-75")  apps=apps.filter(function(a){return a.rank>=25&&a.rank<=75;});
+    if (state.band==="76-100") apps=apps.filter(function(a){return a.rank>75;});
+    var catLabel = cat.replace("_AND_"," & ").replace(/_/g," ");
+    var bandBtns = [["all","All 100"],["1-24","Top 25"],["25-75","Rank 25–75"],["76-100","Rank 76–100"]]
+      .map(function(x){return '<button class="tab-btn'+(state.band===x[0]?" active":"")+'" onclick="setBand(\''+x[0]+'\')">'+x[1]+'</button>';}).join("");
+    var catOpts = cats.map(function(c){return '<option value="'+c+'"'+(c===cat?" selected":"")+'>'+c.replace("_AND_"," & ").replace(/_/g," ")+'</option>';}).join("");
+    mainContent = '<div class="section-title">'+catLabel+' Rankings<span class="ct">'+apps.length+' apps</span></div>'
+      +'<div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center">'
+        +'<span style="font-size:11px;color:var(--muted)">Category:</span>'
+        +'<select class="cat-select" onchange="setRankingCat(this.value)">'+catOpts+'</select>'
+        +'<span style="font-size:11px;color:var(--muted);margin-left:8px">Band:</span>'
+        +bandBtns
+      +'</div>'
+      +'<div class="table-wrap"><table>'
+        +'<thead><tr><th style="width:50px">Rank</th><th>App</th><th>Developer</th><th style="width:70px">Score</th><th style="width:90px">Installs</th></tr></thead>'
+        +'<tbody>'
+        +apps.map(function(a){
+          var rc=a.rank<=9?"t10":a.rank<=24?"t25":"";
+          return '<tr>'
+            +'<td><span class="trank '+rc+'">#'+a.rank+'</span></td>'
+            +'<td><a class="ta" href="'+esc(a.url||"#")+'" target="_blank">'+esc(a.title)+'</a></td>'
+            +'<td class="td">'+esc(a.developer||"—")+'</td>'
+            +'<td>'+(a.score?'<span style="color:var(--amber);font-weight:600">★ '+Number(a.score).toFixed(1)+'</span>':"—")+'</td>'
+            +'<td class="td">'+esc(a.installs||"—")+'</td>'
+            +'</tr>';
+        }).join("")
+        +'</tbody></table></div>';
+  }
+
+  document.getElementById("root").innerHTML =
+    '<nav class="sidebar">'
+      +'<div class="sidebar-logo"><div class="wordmark">Play Store Tracker 🇮🇳</div><div class="sub">India · Top 100 per category</div></div>'
+      +'<div class="sidebar-section"><div class="sidebar-label">Views</div>'+navItems+'</div>'
+      +'<div class="sidebar-section" style="margin-top:8px"><div class="sidebar-label">Mover type</div>'+typeItems+'</div>'
+      +'<div class="sidebar-section" style="margin-top:8px"><div class="sidebar-label">Category</div>'+catItems+'</div>'
+      +'<div class="sidebar-footer"><div class="date">Updated '+esc(D.date)+'</div></div>'
+    +'</nav>'
+    +'<div class="main">'+mainContent+'</div>';
+}
+
+function setView(v)       { state.view=v; render(); }
+function setMoverType(t)  { state.moverType=t; state.view="movers"; render(); }
+function setCat(c)        { state.catFilter=c; state.view="movers"; render(); }
+function setBand(b)       { state.band=b; render(); }
+function setRankingCat(c) { state.rankingCat=c; render(); }
+
+boot();
+</script>
+</body>
+</html>
