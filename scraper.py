@@ -8,10 +8,8 @@ import os
 import time
 import datetime
 from pathlib import Path
-from google_play_scraper import app, charts
-from google_play_scraper.constants.google_play import Sort
-from google_play_scraper.features.charts import Charts
-
+from google_play_scraper import app
+from google_play_scraper.features.top_charts import TopCharts
 # ── Config ──────────────────────────────────────────────────────────────────
 
 CATEGORIES = {
@@ -70,10 +68,9 @@ def last_snapshot_path() -> tuple[str, dict]:
 # ── Scraping ─────────────────────────────────────────────────────────────────
 
 def fetch_category(category_id: str, n: int = TOP_N) -> list[dict]:
-    """Pull top-n free apps for a category. Returns list of dicts with rank."""
     try:
-        result = charts(
-            chart=Charts.TOP_FREE,
+        tc = TopCharts()
+        result = tc.top_free(
             category=category_id,
             country=COUNTRY,
             n=n,
